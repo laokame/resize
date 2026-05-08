@@ -1,0 +1,6 @@
+{
+  "name": "Smart Size Chart Generator",
+  "description": "Calculates and displays product size charts with automatic proportional scaling based on width increments.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
