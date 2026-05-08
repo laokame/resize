@@ -177,6 +177,9 @@ export default function App() {
                   </button>
                 ))}
               </div>
+              <p className="text-[10px] text-[#999999] italic mt-4 ml-1">
+                Note: W=40cm thì mặc định là size M
+              </p>
             </div>
           </section>
 
