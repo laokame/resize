@@ -60,7 +60,7 @@ export default function App() {
       
       const cost = costPrices[label] || 0;
       const shipping = (width * height * depth / 5000) * 20;
-      const profit = cost * 1.2; // Target 120% profit on cost
+      const profit = cost * 1.4; // Target 140% profit on cost
       
       // Calculate selling price such that after fees, we keep (Cost + Shipping + Profit)
       // SellingPrice = (Cost + Shipping + Profit) / (1 - TOTAL_FEE_PERCENT)
@@ -320,30 +320,85 @@ export default function App() {
         </div>
 
         <div className="w-full pt-12">
-          <div className="bg-[#F8F9FA] rounded-3xl p-8 border border-[#EEEEEE]">
+          <div className="bg-[#F8F9FA] rounded-3xl p-8 border border-[#EEEEEE] relative">
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-xl font-black flex items-center gap-2 uppercase tracking-tight">
                 <RefreshCw className="w-5 h-5 text-[#666666]" />
-                Price Matrix (Target 120% Profit)
+                Price Matrix (Target 140% Profit)
               </h2>
             </div>
             
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse bg-white rounded-2xl overflow-hidden shadow-sm">
+            {/* Centralized Tooltip */}
+            <AnimatePresence>
+              {showFeeDetails && (
+                <>
+                  <div 
+                    className="absolute inset-0 z-40 bg-white/60 backdrop-blur-[2px] rounded-3xl cursor-default" 
+                    onClick={() => setShowFeeDetails(null)} 
+                  />
+                  <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none p-4">
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                      className="w-full max-w-[280px] bg-[#111111] text-white p-6 rounded-[24px] shadow-[0_40px_80px_-15px_rgba(0,0,0,0.6)] border border-white/10 pointer-events-auto"
+                    >
+                      <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-3">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#666666]">Fee Details: Size {showFeeDetails}</p>
+                        <button 
+                          onClick={() => setShowFeeDetails(null)}
+                          className="p-1 hover:bg-white/10 rounded-full transition-colors group"
+                        >
+                          <RefreshCw className="w-3 h-3 text-[#444444] group-hover:text-white transition-colors" />
+                        </button>
+                      </div>
+
+                      {(() => {
+                        const size = calculatedSizes.find(s => s.label === showFeeDetails);
+                        if (!size) return null;
+                        const fees = [
+                          { label: 'Transaction (5.99%)', val: size.pricing.feeBreakdown.transaction },
+                          { label: 'Processing (4.76%)', val: size.pricing.feeBreakdown.processing },
+                          { label: 'Regulatory (1.14%)', val: size.pricing.feeBreakdown.regulatory },
+                          { label: 'VAT Trans (0.60%)', val: size.pricing.feeBreakdown.vatTransaction },
+                          { label: 'VAT Proc (0.48%)', val: size.pricing.feeBreakdown.vatProcessing },
+                          { label: 'VAT Reg (0.12%)', val: size.pricing.feeBreakdown.vatRegulatory },
+                        ];
+                        return (
+                          <div className="space-y-2.5">
+                            {fees.map((f, i) => (
+                              <div key={i} className="flex justify-between items-center text-[11px] group/item">
+                                <span className="text-[#888888] font-medium">{f.label}</span>
+                                <span className="font-mono text-white group-hover/item:text-green-400 transition-colors tracking-tighter">
+                                  ${f.val.toFixed(2)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </motion.div>
+                  </div>
+                </>
+              )}
+            </AnimatePresence>
+
+            <div className="overflow-x-auto min-h-[400px]">
+              <table className="w-full text-left border-separate border-spacing-0 bg-white rounded-2xl shadow-sm">
                 <thead>
                   <tr className="bg-[#F1F3F5]">
-                    <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-[#666666] border-b border-[#EEEEEE]">Size</th>
+                    <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-[#666666] border-b border-[#EEEEEE] rounded-tl-2xl">Size</th>
                     <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-[#666666] border-b border-[#EEEEEE]">Cost ($)</th>
                     <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-[#666666] border-b border-[#EEEEEE]">Shipping</th>
-                    <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-[#666666] border-b border-[#EEEEEE]">Profit (120%)</th>
+                    <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-[#666666] border-b border-[#EEEEEE]">Profit (140%)</th>
                     <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-[#666666] border-b border-[#EEEEEE]">Fees & Taxes</th>
-                    <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-black border-b border-[#EEEEEE] bg-black/5">Selling Price ($)</th>
+                    <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-black border-b border-[#EEEEEE] bg-black/5 rounded-tr-2xl">Selling Price ($)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#F1F3F5]">
                   {calculatedSizes.map((size, idx) => (
-                    <tr key={idx} className="hover:bg-[#F8F9FA] transition-colors">
-                      <td className="py-5 px-6 font-bold text-sm">{size.label}</td>
+                    <tr key={idx} className="hover:bg-[#F8F9FA] transition-colors group">
+                      <td className={`py-5 px-6 font-bold text-sm ${idx === calculatedSizes.length - 1 ? "rounded-bl-2xl" : ""}`}>{size.label}</td>
                       <td className="py-5 px-6 text-sm text-[#333333] font-medium">
                         ${size.pricing.cost.toFixed(2)}
                       </td>
@@ -354,53 +409,17 @@ export default function App() {
                         +${size.pricing.profit.toFixed(2)}
                       </td>
                       <td className="py-5 px-6 text-sm text-[#999999]">
-                        <div className="flex items-center gap-2 relative">
-                          +${size.pricing.totalFees.toFixed(2)}
+                        <div className="flex items-center gap-2">
+                          <span className="shrink-0 font-mono">+${size.pricing.totalFees.toFixed(2)}</span>
                           <button 
-                            onClick={() => setShowFeeDetails(showFeeDetails === size.label ? null : size.label)}
-                            className="p-1 hover:bg-black/5 rounded-full transition-colors text-black"
+                            onClick={() => setShowFeeDetails(size.label)}
+                            className="p-1.5 bg-black/5 hover:bg-black text-black hover:text-white rounded-lg transition-all"
                           >
                             <Info className="w-3.5 h-3.5" />
                           </button>
-
-                          <AnimatePresence>
-                            {showFeeDetails === size.label && (
-                              <motion.div 
-                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                className="absolute left-0 top-8 z-50 w-64 bg-black text-white p-4 rounded-2xl shadow-2xl text-[10px] space-y-2 pointer-events-auto"
-                              >
-                                <div className="flex justify-between border-b border-white/10 pb-1">
-                                  <span>Transaction Fee (5.99%)</span>
-                                  <span>${size.pricing.feeBreakdown.transaction.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between border-b border-white/10 pb-1">
-                                  <span>Processing Fee (4.76%)</span>
-                                  <span>${size.pricing.feeBreakdown.processing.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between border-b border-white/10 pb-1">
-                                  <span>Regulatory Fee (1.14%)</span>
-                                  <span>${size.pricing.feeBreakdown.regulatory.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between border-b border-white/10 pb-1">
-                                  <span>VAT Transaction (0.60%)</span>
-                                  <span>${size.pricing.feeBreakdown.vatTransaction.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between border-b border-white/10 pb-1">
-                                  <span>VAT Processing (0.48%)</span>
-                                  <span>${size.pricing.feeBreakdown.vatProcessing.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between font-bold text-white pt-1">
-                                  <span>VAT Regulatory (0.12%)</span>
-                                  <span>${size.pricing.feeBreakdown.vatRegulatory.toFixed(2)}</span>
-                                </div>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
                         </div>
                       </td>
-                      <td className="py-5 px-6 font-black text-base text-black bg-black/5">
+                      <td className={`py-5 px-6 font-black text-base text-black bg-black/5 ${idx === calculatedSizes.length - 1 ? "rounded-br-2xl" : ""}`}>
                         ${size.pricing.sellingPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                     </tr>
@@ -415,7 +434,7 @@ export default function App() {
               </div>
               <div className="flex items-center gap-2 text-[10px] font-bold text-[#999999] uppercase tracking-widest px-2">
                 <Info className="w-3 h-3" />
-                Profit target: 120% of Cost Price
+                Profit target: 140% of Cost Price
               </div>
             </div>
           </div>
