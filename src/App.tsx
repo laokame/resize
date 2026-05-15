@@ -36,10 +36,21 @@ export default function App() {
     'L': 18
   });
 
+  const [showFeeDetails, setShowFeeDetails] = useState<string | null>(null);
+
   // --- Derived Data ---
   const calculatedSizes = useMemo(() => {
+    const FEE_PERCENTAGES = {
+      transaction: 0.0599,
+      processing: 0.0476,
+      regulatory: 0.0114,
+      vatTransaction: 0.0060,
+      vatProcessing: 0.0048,
+      vatRegulatory: 0.0012,
+    };
+    const TOTAL_FEE_PERCENT = Object.values(FEE_PERCENTAGES).reduce((a, b) => a + b, 0);
+
     return sizes.map((label, index) => {
-      // Rule: Each size is 12cm width apart from its neighbor
       const diff = index - baseSizeIndex;
       const width = baseDimensions.w + (diff * WIDTH_INCREMENT_CM);
       
@@ -49,8 +60,21 @@ export default function App() {
       
       const cost = costPrices[label] || 0;
       const shipping = (width * height * depth / 5000) * 20;
-      const profit = cost * 1.4;
-      const sellingPrice = cost + shipping + profit;
+      const profit = cost * 1.2; // Target 120% profit on cost
+      
+      // Calculate selling price such that after fees, we keep (Cost + Shipping + Profit)
+      // SellingPrice = (Cost + Shipping + Profit) / (1 - TOTAL_FEE_PERCENT)
+      const sellingPrice = (cost + shipping + profit) / (1 - TOTAL_FEE_PERCENT);
+      const totalFees = sellingPrice * TOTAL_FEE_PERCENT;
+
+      const feeBreakdown = {
+        transaction: sellingPrice * FEE_PERCENTAGES.transaction,
+        processing: sellingPrice * FEE_PERCENTAGES.processing,
+        regulatory: sellingPrice * FEE_PERCENTAGES.regulatory,
+        vatTransaction: sellingPrice * FEE_PERCENTAGES.vatTransaction,
+        vatProcessing: sellingPrice * FEE_PERCENTAGES.vatProcessing,
+        vatRegulatory: sellingPrice * FEE_PERCENTAGES.vatRegulatory,
+      };
 
       return {
         label,
@@ -64,7 +88,9 @@ export default function App() {
           cost,
           shipping,
           profit,
-          sellingPrice
+          totalFees,
+          sellingPrice,
+          feeBreakdown
         }
       };
     });
@@ -295,18 +321,22 @@ export default function App() {
 
         <div className="w-full pt-12">
           <div className="bg-[#F8F9FA] rounded-3xl p-8 border border-[#EEEEEE]">
-            <h2 className="text-xl font-black mb-8 flex items-center gap-2 uppercase tracking-tight">
-              <RefreshCw className="w-5 h-5 text-[#666666]" />
-              Price Matrix (Target 140% Profit)
-            </h2>
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-xl font-black flex items-center gap-2 uppercase tracking-tight">
+                <RefreshCw className="w-5 h-5 text-[#666666]" />
+                Price Matrix (Target 120% Profit)
+              </h2>
+            </div>
+            
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse bg-white rounded-2xl overflow-hidden shadow-sm">
                 <thead>
                   <tr className="bg-[#F1F3F5]">
                     <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-[#666666] border-b border-[#EEEEEE]">Size</th>
-                    <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-[#666666] border-b border-[#EEEEEE]">Cost Price ($)</th>
-                    <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-[#666666] border-b border-[#EEEEEE]">Shipping (Vol)</th>
-                    <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-[#666666] border-b border-[#EEEEEE]">Target Profit (140%)</th>
+                    <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-[#666666] border-b border-[#EEEEEE]">Cost ($)</th>
+                    <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-[#666666] border-b border-[#EEEEEE]">Shipping</th>
+                    <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-[#666666] border-b border-[#EEEEEE]">Profit (120%)</th>
+                    <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-[#666666] border-b border-[#EEEEEE]">Fees & Taxes</th>
                     <th className="py-4 px-6 text-xs font-bold uppercase tracking-wider text-black border-b border-[#EEEEEE] bg-black/5">Selling Price ($)</th>
                   </tr>
                 </thead>
@@ -323,6 +353,53 @@ export default function App() {
                       <td className="py-5 px-6 text-sm font-bold text-green-600">
                         +${size.pricing.profit.toFixed(2)}
                       </td>
+                      <td className="py-5 px-6 text-sm text-[#999999]">
+                        <div className="flex items-center gap-2 relative">
+                          +${size.pricing.totalFees.toFixed(2)}
+                          <button 
+                            onClick={() => setShowFeeDetails(showFeeDetails === size.label ? null : size.label)}
+                            className="p-1 hover:bg-black/5 rounded-full transition-colors text-black"
+                          >
+                            <Info className="w-3.5 h-3.5" />
+                          </button>
+
+                          <AnimatePresence>
+                            {showFeeDetails === size.label && (
+                              <motion.div 
+                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                className="absolute left-0 top-8 z-50 w-64 bg-black text-white p-4 rounded-2xl shadow-2xl text-[10px] space-y-2 pointer-events-auto"
+                              >
+                                <div className="flex justify-between border-b border-white/10 pb-1">
+                                  <span>Transaction Fee (5.99%)</span>
+                                  <span>${size.pricing.feeBreakdown.transaction.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between border-b border-white/10 pb-1">
+                                  <span>Processing Fee (4.76%)</span>
+                                  <span>${size.pricing.feeBreakdown.processing.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between border-b border-white/10 pb-1">
+                                  <span>Regulatory Fee (1.14%)</span>
+                                  <span>${size.pricing.feeBreakdown.regulatory.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between border-b border-white/10 pb-1">
+                                  <span>VAT Transaction (0.60%)</span>
+                                  <span>${size.pricing.feeBreakdown.vatTransaction.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between border-b border-white/10 pb-1">
+                                  <span>VAT Processing (0.48%)</span>
+                                  <span>${size.pricing.feeBreakdown.vatProcessing.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between font-bold text-white pt-1">
+                                  <span>VAT Regulatory (0.12%)</span>
+                                  <span>${size.pricing.feeBreakdown.vatRegulatory.toFixed(2)}</span>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      </td>
                       <td className="py-5 px-6 font-black text-base text-black bg-black/5">
                         ${size.pricing.sellingPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
@@ -331,9 +408,15 @@ export default function App() {
                 </tbody>
               </table>
             </div>
-            <div className="mt-6 flex items-center gap-2 text-[10px] font-bold text-[#999999] uppercase tracking-widest px-2">
-              <Info className="w-3 h-3" />
-              Logic: Selling Price = Cost + Shipping + (Cost × 1.4)
+            <div className="mt-6 flex flex-col gap-2">
+              <div className="flex items-center gap-2 text-[10px] font-bold text-[#999999] uppercase tracking-widest px-2">
+                <Info className="w-3 h-3" />
+                Logic: Price = (Cost + Shipping + Profit) / (1 - 13.09%)
+              </div>
+              <div className="flex items-center gap-2 text-[10px] font-bold text-[#999999] uppercase tracking-widest px-2">
+                <Info className="w-3 h-3" />
+                Profit target: 120% of Cost Price
+              </div>
             </div>
           </div>
         </div>
